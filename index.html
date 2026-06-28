@@ -1,0 +1,49 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Road Troll</title>
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    #tools {
+      border: 1px solid #fff;
+      border-radius: 8px;
+      padding: 4px 8px;
+      position: fixed;
+      bottom: 32px;
+      left: 32px;
+      background-color: rgba(0, 0, 0, 0.7);
+      box-shadow: 0 3px 3px 0 rgba(0, 0, 0, 0.7);
+      user-select: none;
+    }
+    #tools button {
+      margin-inline-start: 16px;
+    }
+    #paint-select {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-board"></div>
+  <div id="tools">
+    <label for="paint-select">Paint:</label>
+    <select id="paint-select">
+      <option value="0">water</option>
+      <option value="1">grass</option>
+      <option value="2">forest</option>
+      <option value="3">town</option>
+    </select>
+    <button id="clear-map">Clear Map</button>
+    <button id="save-map-data">Save</button>
+    <button id="load-map-data">Load</button>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>
