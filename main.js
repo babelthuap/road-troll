@@ -4,7 +4,9 @@ CANVAS.width = window.innerWidth;
 CANVAS.height = window.innerHeight;
 GAMEBOARD_EL.append(CANVAS);
 const ctx = CANVAS.getContext('2d', {alpha: false});
-CANVAS.addEventListener('mousedown', handleMapClick);
+CANVAS.addEventListener('mousedown', handleMapMouseDown);
+CANVAS.addEventListener('mousemove', handleMapMouseMove);
+CANVAS.addEventListener('mouseup', handleMapMouseUp);
 window.addEventListener('resize', handleResize);
 
 const Terrain = {
@@ -53,12 +55,63 @@ function render() {
 }
 
 const PAINT_SELECT = document.getElementById('paint-select');
-function handleMapClick(event) {
-  const x = Math.floor(event.offsetX / mapData.pixelsPerUnit);
-  const y = Math.floor(event.offsetY / mapData.pixelsPerUnit);
-  const i = x + mapData.width * y;
-  mapData.tiles[i] = parseInt(PAINT_SELECT.value);
+document.addEventListener('keydown', (event) => {
+  switch (event.key) {
+    case 'w':
+      PAINT_SELECT.value = Terrain.WATER;
+      break;
+    case 'g':
+      PAINT_SELECT.value = Terrain.GRASS;
+      break;
+    case 'f':
+      PAINT_SELECT.value = Terrain.FOREST;
+      break;
+    case 'v':
+      PAINT_SELECT.value = Terrain.VILLAGE;
+      break;
+  }
+});
+
+let isMouseDown = false;
+function handleMapMouseDown(event) {
+  isMouseDown = true;
+  applyBrush(event);
+}
+
+function handleMapMouseMove(event) {
+  if (!isMouseDown) return;
+  applyBrush(event);
+}
+
+function handleMapMouseUp() {
+  isMouseDown = false;
+}
+
+const BRUSH_SELECT = document.getElementById('brush-select');
+
+
+function applyBrush({offsetX, offsetY}) {
+  const x = Math.floor(offsetX / mapData.pixelsPerUnit);
+  const y = Math.floor(offsetY / mapData.pixelsPerUnit);
+  const size = parseInt(BRUSH_SELECT.value) - 1;
+  const isCircle = BRUSH_SELECT.value.endsWith('c');
+  const terrain = parseInt(PAINT_SELECT.value);
+  const width = mapData.width;
+  const height = Math.floor(mapData.tiles.length / width);
+  for (let py = clamp(y - size, 0, height); py <= clamp(y + size, 0, height); py++) {
+    for (let px = clamp(x - size, 0, width); px <= clamp(x + size, 0, width); px++) {
+      if (isCircle && (x - px) ** 2 + (y - py) ** 2 > (size + 0.25) ** 2) continue;
+      paintTile(px, py, terrain);
+    }
+  }
   render();
+}
+
+function paintTile(x, y, terrain) {
+  const i = x + mapData.width * y;
+  if (0 <= i && i < mapData.tiles.length && mapData.tiles[i] !== terrain) {
+    mapData.tiles[i] = terrain;
+  }
 }
 
 document.getElementById('clear-map').addEventListener('click', () => {
@@ -113,6 +166,10 @@ function handleResize() {
 
 function rand(n) {
   return Math.floor(Math.random() * n);
+}
+
+function clamp(n, low, high) {
+  return n < low ? low : (n > high ? high : n);
 }
 
 function clear(canvas, ctx) {
