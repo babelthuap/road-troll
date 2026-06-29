@@ -75,18 +75,38 @@ document.addEventListener('keydown', (event) => {
 });
 
 let isMouseDown = false;
+let isPaintingEnabled = true;
+let dragOriginPixel = new Array(2);
+let dragOriginTile = new Array(2);
 function handleMapMouseDown(event) {
   isMouseDown = true;
-  applyBrush(event);
+  if (isPaintingEnabled) {
+    applyBrush(event);
+  } else {
+    dragOriginPixel[0] = event.offsetX;
+    dragOriginPixel[1] = event.offsetY;
+    dragOriginTile[0] = mapData.leftX;
+    dragOriginTile[1] = mapData.topY;
+  }
 }
 
 function handleMapMouseMove(event) {
   if (!isMouseDown) return;
-  applyBrush(event);
+  if (isPaintingEnabled) {
+    applyBrush(event);
+  } else {
+    const dx = dragOriginPixel[0] - event.offsetX;
+    const dy = dragOriginPixel[1] - event.offsetY;
+    mapData.leftX = dragOriginTile[0] + dx / mapData.pixelsPerUnit;
+    mapData.topY = dragOriginTile[1] + dy / mapData.pixelsPerUnit;
+  }
+  render();
 }
 
 function handleMapMouseUp() {
   isMouseDown = false;
+  dragOriginX = null;
+  dragOriginY = null;
 }
 
 let allowZoom = true;  // Limit once per frame
@@ -123,7 +143,6 @@ function applyBrush({offsetX, offsetY}) {
       paintTile(px, py, terrain);
     }
   }
-  render();
 }
 
 function paintTile(x, y, terrain) {
@@ -132,6 +151,12 @@ function paintTile(x, y, terrain) {
     mapData.tiles[i] = terrain;
   }
 }
+
+document.getElementById('enable-painting').addEventListener('change', function() {
+  isPaintingEnabled = this.checked;
+  PAINT_SELECT.disabled = !this.checked;
+  BRUSH_SELECT.disabled = !this.checked;
+});
 
 document.getElementById('clear-map').addEventListener('click', () => {
   const terrain = parseInt(PAINT_SELECT.value);;
