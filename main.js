@@ -115,7 +115,7 @@ function handleMapWheel({deltaY, offsetX, offsetY}) {
   if (!allowZoom) return;
   allowZoom = false;
   const prev = mapData.pixelsPerUnit;
-  const updated = clamp(prev + Math.sign(deltaY), 10, 100);
+  const updated = clamp(prev - 2 * Math.sign(deltaY), 10, 100);
   if (updated !== prev) {
     mapData.pixelsPerUnit = updated;
     // Fix the location that the cursor is hovering over.
