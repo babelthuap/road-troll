@@ -17,8 +17,8 @@ const Terrain = {
 };
 const TERRAIN_COLOR = new Map([
   [Terrain.WATER, '#00c'],
-  [Terrain.GRASS, '#0f0'],
-  [Terrain.FOREST, '#070'],
+  [Terrain.GRASS, '#0a3'],
+  [Terrain.FOREST, '#060'],
   [Terrain.VILLAGE, '#8B4513'],
 ]);
 
