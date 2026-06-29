@@ -22,14 +22,7 @@ const TERRAIN_COLOR = new Map([
   [Terrain.VILLAGE, '#8B4513'],
 ]);
 
-let mapData = {
-  width: 100,
-  pixelsPerUnit: 15,
-  tiles: new Array(5000),
-};
-for (let i = 0; i < 5000; i++) {
-  mapData.tiles[i] = rand(Object.entries(Terrain).length);
-}
+let mapData = window.defaultMap;
 render();
 
 function render() {
