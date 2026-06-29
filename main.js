@@ -15,12 +15,12 @@ const Terrain = {
   FOREST: 2,
   VILLAGE: 3,
 };
-const TERRAIN_COLOR = new Map([
-  [Terrain.WATER, '#00c'],
-  [Terrain.GRASS, '#0a3'],
-  [Terrain.FOREST, '#060'],
-  [Terrain.VILLAGE, '#8B4513'],
-]);
+const TERRAIN_IMAGE = [
+  document.getElementById('water'),
+  document.getElementById('grass'),
+  document.getElementById('forest'),
+  document.getElementById('village'),
+];
 
 let mapData = window.defaultMap;
 render();
@@ -34,9 +34,10 @@ function render() {
   let y = 0;
   for (let i = 0; i < mapData.tiles.length; i++) {
     ctx.beginPath();
-    ctx.rect(x * scale, y * scale, scale, scale);
-    ctx.fillStyle = TERRAIN_COLOR.get(mapData.tiles[i]);
-    ctx.fill();
+    const terrain = mapData.tiles[i];
+    ctx.drawImage(
+        TERRAIN_IMAGE[terrain],
+        x * scale, y * scale, scale, scale);
     x++;
     if (x === mapData.width) {
       x = 0;
