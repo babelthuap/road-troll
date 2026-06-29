@@ -7,6 +7,7 @@ const ctx = CANVAS.getContext('2d', {alpha: false});
 CANVAS.addEventListener('mousedown', handleMapMouseDown);
 CANVAS.addEventListener('mousemove', handleMapMouseMove);
 CANVAS.addEventListener('mouseup', handleMapMouseUp);
+CANVAS.addEventListener('mouseleave', handleMapMouseUp);
 CANVAS.addEventListener('wheel', handleMapWheel);
 window.addEventListener('resize', handleResize);
 
@@ -99,8 +100,8 @@ function handleMapMouseMove(event) {
     const dy = dragOriginPixel[1] - event.offsetY;
     mapData.leftX = dragOriginTile[0] + dx / mapData.pixelsPerUnit;
     mapData.topY = dragOriginTile[1] + dy / mapData.pixelsPerUnit;
+    render();
   }
-  render();
 }
 
 function handleMapMouseUp() {
@@ -130,8 +131,8 @@ function handleMapWheel({deltaY, offsetX, offsetY}) {
 const BRUSH_SELECT = document.getElementById('brush-select');
 
 function applyBrush({offsetX, offsetY}) {
-  const x = Math.floor(offsetX / mapData.pixelsPerUnit);
-  const y = Math.floor(offsetY / mapData.pixelsPerUnit);
+  const x = Math.floor(mapData.leftX + offsetX / mapData.pixelsPerUnit);
+  const y = Math.floor(mapData.topY + offsetY / mapData.pixelsPerUnit);
   const size = parseInt(BRUSH_SELECT.value) - 1;
   const isCircle = BRUSH_SELECT.value.endsWith('c');
   const terrain = parseInt(PAINT_SELECT.value);
@@ -143,6 +144,7 @@ function applyBrush({offsetX, offsetY}) {
       paintTile(px, py, terrain);
     }
   }
+  render();
 }
 
 function paintTile(x, y, terrain) {
