@@ -7,6 +7,7 @@ const ctx = CANVAS.getContext('2d', {alpha: false});
 CANVAS.addEventListener('mousedown', handleMapMouseDown);
 CANVAS.addEventListener('mousemove', handleMapMouseMove);
 CANVAS.addEventListener('mouseup', handleMapMouseUp);
+CANVAS.addEventListener('wheel', handleMapWheel);
 window.addEventListener('resize', handleResize);
 
 const Terrain = {
@@ -30,18 +31,25 @@ function render() {
 
   clear(CANVAS, ctx);
   const scale = mapData.pixelsPerUnit;
-  let x = 0;
-  let y = 0;
-  for (let i = 0; i < mapData.tiles.length; i++) {
-    ctx.beginPath();
-    const terrain = mapData.tiles[i];
-    ctx.drawImage(
-        TERRAIN_IMAGE[terrain],
-        x * scale, y * scale, scale, scale);
-    x++;
-    if (x === mapData.width) {
-      x = 0;
-      y++;
+  const mapHeight = mapData.tiles.length / mapData.width;
+  const minTileX = Math.floor(mapData.leftX);
+  const maxTileX = Math.floor(mapData.leftX + CANVAS.width / scale);
+  const minTileY = Math.floor(mapData.topY);
+  const maxTileY = Math.floor(mapData.topY + CANVAS.height / scale);
+  for (let y = minTileY; y <= maxTileY; y++) {
+    if (y < 0 || y >= mapHeight) continue;
+    for (let x = minTileX; x <= maxTileX; x++) {
+      if (x < 0 || x >= mapData.width) continue;
+      const i = x + y * mapData.width;
+      const terrain = mapData.tiles[i];
+      ctx.beginPath();
+      ctx.drawImage(
+          TERRAIN_IMAGE[terrain],
+          // Add a fudge factor so there aren't gaps between tiles
+          (x - mapData.leftX) * scale - 0.5,
+          (y - mapData.topY) * scale - 0.5,
+          scale + 1,
+          scale + 1);
     }
   }
 
@@ -81,8 +89,25 @@ function handleMapMouseUp() {
   isMouseDown = false;
 }
 
-const BRUSH_SELECT = document.getElementById('brush-select');
+let allowZoom = true;  // Limit once per frame
+function handleMapWheel({deltaY, offsetX, offsetY}) {
+  if (!allowZoom) return;
+  allowZoom = false;
+  const prev = mapData.pixelsPerUnit;
+  const updated = clamp(prev + Math.sign(deltaY), 10, 100);
+  if (updated !== prev) {
+    mapData.pixelsPerUnit = updated;
+    // Fix the location that the cursor is hovering over.
+    mapData.leftX = mapData.leftX + offsetX / prev - offsetX / updated;
+    mapData.topY = mapData.topY + offsetY / prev - offsetY / updated;
+    render();
+  }
+  requestAnimationFrame(() => {
+    allowZoom = true;
+  });
+}
 
+const BRUSH_SELECT = document.getElementById('brush-select');
 
 function applyBrush({offsetX, offsetY}) {
   const x = Math.floor(offsetX / mapData.pixelsPerUnit);
