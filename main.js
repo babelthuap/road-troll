@@ -27,6 +27,10 @@ const TERRAIN_IMAGE = [
 let mapData = window.defaultMap;
 render();
 
+for (const image of TERRAIN_IMAGE) {
+  image.onload = render;
+}
+
 function render() {
   console.time('render');
 
