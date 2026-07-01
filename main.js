@@ -45,7 +45,7 @@ guys.push({
 
 let pathIndex = 0;
 let stepDir = 1;
-const moveTime = 250;
+const moveTime = 100;
 function animationLoop(now) {
   const guy = guys[0];
   if (guy.moving) {
@@ -55,9 +55,11 @@ function animationLoop(now) {
       guy.prevTimestamp = guy.nextTimestamp;
       pathIndex += stepDir;
       guy.nextTile = path[pathIndex];
+      const cost =
+          (MOVE_COST[mapData.tiles[guy.prevTile]] + MOVE_COST[mapData.tiles[guy.nextTile]]) / 2;
       const diff = Math.abs(guy.prevTile - guy.nextTile);
       const dist = (diff === 1 || diff === mapData.width) ? 1 : Math.sqrt(2);
-      guy.nextTimestamp += moveTime * dist;
+      guy.nextTimestamp += moveTime * cost * dist;
       if (pathIndex >= path.length - 1) {
         stepDir = -1;
       }
@@ -80,9 +82,11 @@ function animationLoop(now) {
     guy.prevTile = path[0];
     guy.prevTimestamp = now;
     guy.nextTile = path[1];
+    const cost =
+        (MOVE_COST[mapData.tiles[guy.prevTile]] + MOVE_COST[mapData.tiles[guy.nextTile]]) / 2;
     const diff = Math.abs(guy.prevTile - guy.nextTile);
     const dist = (diff === 1 || diff === mapData.width) ? 1 : Math.sqrt(2);
-    guy.nextTimestamp = now + moveTime * dist;
+    guy.nextTimestamp = now + moveTime * cost * dist;
     const tileY = Math.floor(path[0] / mapData.width);
     const tileX = path[0] - tileY * mapData.width;
     guy.y = tileY + 0.5;
