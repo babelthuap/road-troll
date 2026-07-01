@@ -153,6 +153,7 @@ function handleMapMouseMove(event) {
     const tile = x + mapData.width * y;
     markers = markers.filter(m => m !== draggingMarker);
     markers.push(tile);
+    markers.sort();
     draggingMarker = tile;
     path = findPath(markers[0], markers[1]);
     render();
@@ -208,6 +209,7 @@ function applyBrush({offsetX, offsetY}) {
       paintTile(px, py, terrain);
     }
   }
+  path = findPath(markers[0], markers[1]);
   render();
 }
 
