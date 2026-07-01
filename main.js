@@ -302,7 +302,12 @@ const RT2_2 = Math.sqrt(2) / 2;
 function findPath(start, end) {
   console.time('findPath');
 
+  if (MOVE_COST[mapData.tiles[start]] === Infinity) {
+    console.timeEnd('findPath');
+    return [];
+  }
   if (start === end) {
+    console.timeEnd('findPath');
     return [start];
   }
   const a = new Array(mapData.tiles.length);
@@ -359,6 +364,7 @@ function findPath(start, end) {
     }
   }
   if (!foundPath) {
+    console.timeEnd('findPath');
     return [];
   }
   const path = [end];
