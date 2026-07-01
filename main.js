@@ -23,9 +23,16 @@ const TERRAIN_IMAGE = [
   document.getElementById('forest'),
   document.getElementById('village'),
 ];
+const MOVE_COST = [
+  Infinity,  // water
+  3,  // grass
+  9,  // forest
+  1,  // village
+];
 
 let mapData = window.defaultMap;
-render();
+let markers = [2138, 2348];
+let path = [];
 
 for (const image of TERRAIN_IMAGE) {
   image.onload = render;
@@ -37,6 +44,8 @@ function render() {
   clear(CANVAS, ctx);
   const scale = mapData.pixelsPerUnit;
   const mapHeight = mapData.tiles.length / mapData.width;
+
+  // draw terrain
   const minTileX = Math.floor(mapData.leftX);
   const maxTileX = Math.floor(mapData.leftX + CANVAS.width / scale);
   const minTileY = Math.floor(mapData.topY);
@@ -47,7 +56,6 @@ function render() {
       if (x < 0 || x >= mapData.width) continue;
       const i = x + y * mapData.width;
       const terrain = mapData.tiles[i];
-      ctx.beginPath();
       ctx.drawImage(
           TERRAIN_IMAGE[terrain],
           // Add a fudge factor so there aren't gaps between tiles
@@ -56,6 +64,40 @@ function render() {
           scale + 1,
           scale + 1);
     }
+  }
+
+  // draw markers
+  for (let marker of markers) {
+    ctx.beginPath();
+    ctx.fillStyle = 'red';
+    const y = Math.floor(marker / mapData.width);
+    const x = marker - y * mapData.width;
+    ctx.arc(
+        (x - mapData.leftX + 0.5) * scale,
+        (y - mapData.topY + 0.5) * scale,
+        scale / 2,
+        0,
+        2 * Math.PI);
+    ctx.fill();
+  }
+
+  // draw path
+  if (path.length > 1) {
+    ctx.beginPath();
+    ctx.strokeStyle = 'red';
+    const startY = Math.floor(path[0] / mapData.width);
+    const startX = path[0] - startY * mapData.width;
+    ctx.moveTo(
+        (startX - mapData.leftX + 0.5) * scale,
+        (startY - mapData.topY + 0.5) * scale);
+    for (let i = 1; i < path.length; i++) {
+      const y = Math.floor(path[i] / mapData.width);
+      const x = path[i] - y * mapData.width;
+      ctx.lineTo(
+          (x - mapData.leftX + 0.5) * scale,
+          (y - mapData.topY + 0.5) * scale);
+    }
+    ctx.stroke();
   }
 
   console.timeEnd('render');
@@ -83,8 +125,16 @@ let isMouseDown = false;
 let isPaintingEnabled = true;
 let dragOriginPixel = new Array(2);
 let dragOriginTile = new Array(2);
+let draggingMarker = null;
 function handleMapMouseDown(event) {
   isMouseDown = true;
+  const x = Math.floor(mapData.leftX + event.offsetX / mapData.pixelsPerUnit);
+  const y = Math.floor(mapData.topY + event.offsetY / mapData.pixelsPerUnit);
+  const tile = x + mapData.width * y;
+  if (markers.includes(tile)) {
+    draggingMarker = tile;
+    return;
+  }
   if (isPaintingEnabled) {
     applyBrush(event);
   } else {
@@ -97,6 +147,17 @@ function handleMapMouseDown(event) {
 
 function handleMapMouseMove(event) {
   if (!isMouseDown) return;
+  if (draggingMarker !== null) {
+    const x = Math.floor(mapData.leftX + event.offsetX / mapData.pixelsPerUnit);
+    const y = Math.floor(mapData.topY + event.offsetY / mapData.pixelsPerUnit);
+    const tile = x + mapData.width * y;
+    markers = markers.filter(m => m !== draggingMarker);
+    markers.push(tile);
+    draggingMarker = tile;
+    path = findPath(markers[0], markers[1]);
+    render();
+    return;
+  }
   if (isPaintingEnabled) {
     applyBrush(event);
   } else {
@@ -110,8 +171,7 @@ function handleMapMouseMove(event) {
 
 function handleMapMouseUp() {
   isMouseDown = false;
-  dragOriginX = null;
-  dragOriginY = null;
+  draggingMarker = null;
 }
 
 let allowZoom = true;  // Limit once per frame
@@ -230,3 +290,156 @@ function clear(canvas, ctx) {
 function mod(n, m) {
   return n < 0 ? (n % m + m) % m : n % m;
 }
+
+const NBR_OFFSETS = [
+  [-1, -1], [0, -1], [1, -1],
+  [-1,  0],          [1,  0],
+  [-1,  1], [0,  1], [1,  1],
+];
+const RT2_2 = Math.sqrt(2) / 2;
+function findPath(start, end) {
+  console.time('findPath');
+
+  if (start === end) {
+    return [start];
+  }
+  const a = new Array(mapData.tiles.length);
+  a[start] = {
+    cost: 0,
+    prev: null,
+  };
+  const q = new PriorityQueue((a, b) => a.cost < b.cost);
+  q.push({
+    tile: start,
+    cost: 0,
+  });
+
+  const width = mapData.width;
+  const height = mapData.tiles.length / mapData.width;
+  const neighbors = (tile) => {
+    const y = Math.floor(tile / width);
+    const x = tile - y * width;
+    return NBR_OFFSETS
+        .map(([dx, dy]) => [x + dx, y + dy])
+        .filter(([nx, ny]) => 0 < nx && nx < width && 0 < ny && ny < height)
+        .map(([nx, ny]) => ({
+          tile: nx + width * ny,
+          dist: x === nx || y === ny ? 0.5 : RT2_2,
+        }));
+  };
+
+  let foundPath = false;
+  while (!foundPath && !q.isEmpty()) {
+    const curr = q.pop();
+    // add neighbors
+    for (const nbr of neighbors(curr.tile)) {
+      const nbrMoveCost = MOVE_COST[mapData.tiles[nbr.tile]];
+      if (nbrMoveCost === Infinity) {
+        continue;
+      }
+      const stepCost = nbr.dist * (MOVE_COST[mapData.tiles[curr.tile]] + nbrMoveCost);
+      const nbrTotalCost = curr.cost + stepCost;
+      if (!a[nbr.tile] || nbrTotalCost < a[nbr.tile].cost) {
+        a[nbr.tile] = {
+          cost: nbrTotalCost,
+          prev: curr.tile,
+        };
+        q.push({
+          tile: nbr.tile,
+          cost: nbrTotalCost,
+        });
+      }
+      // if neighbor is end, exit
+      if (nbr.tile === end) {
+        foundPath = true;
+        break;
+      }
+    }
+  }
+  if (!foundPath) {
+    return [];
+  }
+  const path = [end];
+  let node = a[end];
+  while (node.prev !== null) {
+    path.push(node.prev);
+    node = a[node.prev];
+  }
+
+  console.timeEnd('findPath');
+  return path.reverse();
+}
+
+// Source - https://stackoverflow.com/a/42919752
+class PriorityQueue {
+  constructor(comparator = (a, b) => a > b) {
+    this._heap = [];
+    this._comparator = comparator;
+    this._top = 0;
+    this._parent = i => ((i + 1) >>> 1) - 1;
+    this._left = i => (i << 1) + 1;
+    this._right = i => (i + 1) << 1;
+  }
+  size() {
+    return this._heap.length;
+  }
+  isEmpty() {
+    return this.size() === 0;
+  }
+  peek() {
+    return this._heap[this._top];
+  }
+  push(...values) {
+    values.forEach(value => {
+      this._heap.push(value);
+      this._siftUp();
+    });
+    return this.size();
+  }
+  pop() {
+    const poppedValue = this.peek();
+    const bottom = this.size() - 1;
+    if (bottom > this._top) {
+      this._swap(this._top, bottom);
+    }
+    this._heap.pop();
+    this._siftDown();
+    return poppedValue;
+  }
+  replace(value) {
+    const replacedValue = this.peek();
+    this._heap[this._top] = value;
+    this._siftDown();
+    return replacedValue;
+  }
+  _greater(i, j) {
+    return this._comparator(this._heap[i], this._heap[j]);
+  }
+  _swap(i, j) {
+    [this._heap[i], this._heap[j]] = [this._heap[j], this._heap[i]];
+  }
+  _siftUp() {
+    let node = this.size() - 1;
+    while (node > this._top && this._greater(node, this._parent(node))) {
+      this._swap(node, this._parent(node));
+      node = this._parent(node);
+    }
+  }
+  _siftDown() {
+    let node = this._top;
+    while (
+      (this._left(node) < this.size() && this._greater(this._left(node), node)) ||
+      (this._right(node) < this.size() && this._greater(this._right(node), node))
+    ) {
+      let maxChild =
+          (this._right(node) < this.size() && this._greater(this._right(node), this._left(node))) ?
+          this._right(node) :
+          this._left(node);
+      this._swap(node, maxChild);
+      node = maxChild;
+    }
+  }
+}
+
+path = findPath(markers[0], markers[1]);
+render();
