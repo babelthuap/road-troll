@@ -118,11 +118,13 @@ document.addEventListener('keydown', (event) => {
     case 'v':
       PAINT_SELECT.value = Terrain.VILLAGE;
       break;
+    case ' ':
+      document.getElementById('enable-painting').click();
   }
 });
 
 let isMouseDown = false;
-let isPaintingEnabled = true;
+let isPaintingEnabled = false;
 let dragOriginPixel = new Array(2);
 let dragOriginTile = new Array(2);
 let draggingMarker = null;
@@ -299,22 +301,28 @@ const NBR_OFFSETS = [
   [-1,  1], [0,  1], [1,  1],
 ];
 const RT2_2 = Math.sqrt(2) / 2;
+let prevStepArray;
 function findPath(start, end) {
-  console.time('findPath');
-
   if (MOVE_COST[mapData.tiles[start]] === Infinity) {
-    console.timeEnd('findPath');
     return [];
   }
   if (start === end) {
-    console.timeEnd('findPath');
     return [start];
   }
-  const a = new Array(mapData.tiles.length);
-  a[start] = {
-    cost: 0,
-    prev: null,
-  };
+  console.time('findPath');
+
+  if (prevStepArray && prevStepArray.length === mapData.tiles.length) {
+    prevStepArray.fill(0);
+  } else {
+    if (mapData.tiles.length > 2**16 - 2) {
+      prevStepArray = new Uint32Array(mapData.tiles.length);
+    } else if (mapData.tiles.length > 2**8 - 2) {
+      prevStepArray = new Uint16Array(mapData.tiles.length);
+    } else {
+      prevStepArray = new Uint8Array(mapData.tiles.length);
+    }
+  }
+  prevStepArray[start] = -1;
   const q = new PriorityQueue((a, b) => a.cost < b.cost);
   q.push({
     tile: start,
@@ -345,15 +353,11 @@ function findPath(start, end) {
         continue;
       }
       const stepCost = nbr.dist * (MOVE_COST[mapData.tiles[curr.tile]] + nbrMoveCost);
-      const nbrTotalCost = curr.cost + stepCost;
-      if (!a[nbr.tile] || nbrTotalCost < a[nbr.tile].cost) {
-        a[nbr.tile] = {
-          cost: nbrTotalCost,
-          prev: curr.tile,
-        };
+      if (prevStepArray[nbr.tile] === 0) {
+        prevStepArray[nbr.tile] = curr.tile;
         q.push({
           tile: nbr.tile,
-          cost: nbrTotalCost,
+          cost: curr.cost + stepCost,
         });
       }
       // if neighbor is end, exit
@@ -368,11 +372,12 @@ function findPath(start, end) {
     return [];
   }
   const path = [end];
-  let node = a[end];
-  while (node.prev !== null) {
-    path.push(node.prev);
-    node = a[node.prev];
+  let node = prevStepArray[end];
+  while (node !== start) {
+    path.push(node);
+    node = prevStepArray[node];
   }
+  path.push(start);
 
   console.timeEnd('findPath');
   return path.reverse();

@@ -25,6 +25,12 @@
     #tools button {
       margin-inline-start: 16px;
     }
+    #enable-painting {
+      height: 18px;
+      width: 18px;
+      transform: translateY(3px);
+      margin: 0;
+    }
     select {
       cursor: pointer;
     }
@@ -33,16 +39,16 @@
 <body>
   <div id="game-board"></div>
   <div id="tools">
-    <input id="enable-painting" type="checkbox" checked="true">
+    <input id="enable-painting" type="checkbox" title="toggle painting (space)">
     <label for="paint-select">Paint:</label>
-    <select id="paint-select">
+    <select id="paint-select" disabled>
       <option value="0">water (w)</option>
       <option value="1">grass (g)</option>
       <option value="2">forest (f)</option>
       <option value="3">village (v)</option>
     </select>
     <label for="brush-select">Brush:</label>
-    <select id="brush-select">
+    <select id="brush-select" disabled>
       <option value="1">1</option>
       <option value="2">2</option>
       <option value="3s">3 - square</option>
