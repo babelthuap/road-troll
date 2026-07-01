@@ -33,13 +33,65 @@ const MOVE_COST = [
 let mapData = window.defaultMap;
 let markers = [2138, 2348];
 let path = [];
+const guys = [];
+guys.push({
+  moving: false,
+  prevTile: null,
+  prevTimestamp: null,
+  nextTile: null,
+  nextTimestamp: null,
+  color: 'magenta',
+});
 
-for (const image of TERRAIN_IMAGE) {
-  image.onload = render;
+let pathIndex = 0;
+let stepDir = 1;
+const moveTime = 250;
+function animationLoop(now) {
+  const guy = guys[0];
+  if (guy.moving) {
+    // update guy
+    while (now > guy.nextTimestamp) {
+      guy.prevTile = guy.nextTile;
+      guy.prevTimestamp = guy.nextTimestamp;
+      pathIndex += stepDir;
+      guy.nextTile = path[pathIndex];
+      guy.nextTimestamp += moveTime;
+      if (pathIndex >= path.length - 1) {
+        stepDir = -1;
+      }
+      if (pathIndex <= 0) {
+        stepDir = 1;
+      }
+    }
+    // interpolate between steps
+    const prevTileY = Math.floor(guy.prevTile / mapData.width);
+    const prevTileX = guy.prevTile - prevTileY * mapData.width;
+    const nextTileY = Math.floor(guy.nextTile / mapData.width);
+    const nextTileX = guy.nextTile - nextTileY * mapData.width;
+    const fracPrev = (guy.nextTimestamp - now) / moveTime;
+    const fracNext = 1 - fracPrev;
+    guy.x = prevTileX * fracPrev + nextTileX * fracNext + 0.5;
+    guy.y = prevTileY * fracPrev + nextTileY * fracNext + 0.5;
+  } else if (path.length > 1) {
+    guy.moving = true;
+    pathIndex = 1;
+    guy.prevTile = path[0];
+    guy.prevTimestamp = now;
+    guy.nextTile = path[1];
+    guy.nextTimestamp = now + moveTime;
+    const tileY = Math.floor(path[0] / mapData.width);
+    const tileX = path[0] - tileY * mapData.width;
+    guy.y = tileY + 0.5;
+    guy.x = tileX + 0.5;
+  }
+
+  render();
+  requestAnimationFrame(animationLoop);
 }
+requestAnimationFrame(animationLoop);
 
 function render() {
-  console.time('render');
+//  console.time('render');
 
   clear(CANVAS, ctx);
   const scale = mapData.pixelsPerUnit;
@@ -100,7 +152,20 @@ function render() {
     ctx.stroke();
   }
 
-  console.timeEnd('render');
+  // draw guys
+  for (const guy of guys) {
+    ctx.beginPath();
+    ctx.fillStyle = guy.color;
+    ctx.arc(
+        (guy.x - mapData.leftX) * scale,
+        (guy.y - mapData.topY) * scale,
+        scale / 2,
+        0,
+        2 * Math.PI);
+    ctx.fill();
+  }
+
+//  console.timeEnd('render');
 }
 
 const PAINT_SELECT = document.getElementById('paint-select');
@@ -158,7 +223,7 @@ function handleMapMouseMove(event) {
     markers.sort();
     draggingMarker = tile;
     path = findPath(markers[0], markers[1]);
-    render();
+    guys[0].moving = false;
     return;
   }
   if (isPaintingEnabled) {
@@ -168,7 +233,6 @@ function handleMapMouseMove(event) {
     const dy = dragOriginPixel[1] - event.offsetY;
     mapData.leftX = dragOriginTile[0] + dx / mapData.pixelsPerUnit;
     mapData.topY = dragOriginTile[1] + dy / mapData.pixelsPerUnit;
-    render();
   }
 }
 
@@ -188,7 +252,6 @@ function handleMapWheel({deltaY, offsetX, offsetY}) {
     // Fix the location that the cursor is hovering over.
     mapData.leftX = mapData.leftX + offsetX / prev - offsetX / updated;
     mapData.topY = mapData.topY + offsetY / prev - offsetY / updated;
-    render();
   }
   requestAnimationFrame(() => {
     allowZoom = true;
@@ -212,7 +275,7 @@ function applyBrush({offsetX, offsetY}) {
     }
   }
   path = findPath(markers[0], markers[1]);
-  render();
+  guys[0].moving = false;
 }
 
 function paintTile(x, y, terrain) {
@@ -233,7 +296,6 @@ document.getElementById('clear-map').addEventListener('click', () => {
   for (let i = 0; i < mapData.tiles.length; i++) {
     mapData.tiles[i] = terrain;
   }
-  render();
 });
 
 document.getElementById('save-map-data').addEventListener('click', () => {
@@ -261,7 +323,6 @@ document.getElementById('load-map-data').addEventListener('click', () => {
       reader.addEventListener('load', (e) => {
         const json = e.target.result;
         mapData = JSON.parse(json);
-        render();
         console.timeEnd('load');
       });
       reader.readAsText(file);
@@ -275,7 +336,6 @@ document.getElementById('load-map-data').addEventListener('click', () => {
 function handleResize() {
   CANVAS.width = window.innerWidth;
   CANVAS.height = window.innerHeight;
-  render();
 }
 
 function rand(n) {
@@ -455,4 +515,3 @@ class PriorityQueue {
 }
 
 path = findPath(markers[0], markers[1]);
-render();
